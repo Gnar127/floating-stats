@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>网络统计</title>
     <script type="module" src="/main.js" defer></script>
-    <script type="module" src="/chat-reminder.js" defer></script>
   </head>
 
   <body>
@@ -25,12 +24,12 @@
 
           <div class="stat-item">
             <span class="stat-label">下载速度</span>
-            <span class="stat-value" id="download">-- KB/s</span>
+            <span class="stat-value" id="download">-- MB/s</span>
           </div>
 
           <div class="stat-item">
             <span class="stat-label">上传速度</span>
-            <span class="stat-value" id="upload">-- KB/s</span>
+            <span class="stat-value" id="upload">-- MB/s</span>
           </div>
 
           <div class="stat-item">
@@ -41,6 +40,17 @@
           <div class="stat-item">
             <span class="stat-label">连接状态</span>
             <span class="stat-value status" id="status">检测中...</span>
+          </div>
+        </div>
+
+        <div class="weather-container">
+          <div class="weather-main">
+            <span class="weather-icon" id="weatherIcon">🌤️</span>
+            <span class="weather-temp" id="weatherTemp">--°C</span>
+          </div>
+          <div class="weather-details">
+            <span class="weather-desc" id="weatherDesc">加载中...</span>
+            <span class="weather-location" id="weatherLocation">--</span>
           </div>
         </div>
 
