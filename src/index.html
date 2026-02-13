@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>网络统计</title>
+    <script type="module" src="/main.js" defer></script>
+    <script type="module" src="/chat-reminder.js" defer></script>
+  </head>
+
+  <body>
+    <div class="widget-wrapper">
+      <div class="floating-widget" id="widget">
+        <div class="widget-header">
+          <span class="widget-title">网络统计</span>
+          <button class="close-btn" id="closeBtn">×</button>
+        </div>
+
+        <div class="stats-container">
+          <div class="stat-item">
+            <span class="stat-label">网络延迟</span>
+            <span class="stat-value" id="latency">-- ms</span>
+          </div>
+
+          <div class="stat-item">
+            <span class="stat-label">下载速度</span>
+            <span class="stat-value" id="download">-- KB/s</span>
+          </div>
+
+          <div class="stat-item">
+            <span class="stat-label">上传速度</span>
+            <span class="stat-value" id="upload">-- KB/s</span>
+          </div>
+
+          <div class="stat-item">
+            <span class="stat-label">丢包率</span>
+            <span class="stat-value" id="packetLoss">-- %</span>
+          </div>
+
+          <div class="stat-item">
+            <span class="stat-label">连接状态</span>
+            <span class="stat-value status" id="status">检测中...</span>
+          </div>
+        </div>
+
+        <div class="transparency-control">
+          <span class="slider-label">透明度</span>
+          <input type="range" class="transparency-slider" id="transparencySlider" min="20" max="100" value="95" />
+        </div>
+
+        <div class="update-time">
+          更新时间: <span id="updateTime">--:--:--</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+src-tauri/target/
+*.wixobj
+*.msi
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+nul
