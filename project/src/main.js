@@ -1,7 +1,17 @@
 const { invoke } = window.__TAURI__.core;
 const { getCurrentWindow } = window.__TAURI__.window;
 
-// 格式化速度显示 - 现在用 KB/s
+// 动态调整窗口高度
+async function adjustWindowHeight() {
+  const widget = document.getElementById('widget');
+  const scrollHeight = widget.scrollHeight;
+  const currentWindow = getCurrentWindow();
+
+  // 设置窗口高度为内容高度 + 一些边距
+  await currentWindow.setSize({ type: 'Physical', width: 280, height: scrollHeight });
+}
+
+// 格式化速度显示
 function formatSpeed(speed) {
   if (speed < 1) {
     return (speed * 1024).toFixed(2) + ' B/s';
@@ -13,149 +23,122 @@ function formatSpeed(speed) {
 }
 
 // 天气图标映射
-const weatherIcons = {
-  '晴': '☀️',
-  '多云': '⛅',
-  '阴': '☁️',
-  '雨': '🌧️',
-  '雪': '❄️',
-  '雷': '⛈️',
-  '雾': '🌫️',
-  '霾': '😷',
-  '风': '💨',
-};
-
-// 天气状态码映射（和风天气）
-const weatherCodeMap = {
-  // 晴
-  100: '晴', 150: '晴',
-  // 多云
-  101: '多云', 102: '多云', 103: '多云',
-  // 阴
-  104: '阴',
-  // 雨
-  300: '雨', 301: '雨', 302: '小雨', 303: '中雨', 304: '大雨',
-  305: '暴雨', 306: '大暴雨', 307: '特大暴雨', 308: '毛毛雨',
-  309: '小雨', 310: '雨', 311: '中雨', 312: '大雨',
-  313: '暴雨', 314: '暴雨', 315: '大雨', 316: '中雨',
-  317: '小雨', 318: '雨', 350: '雨', 351: '雨',
-  // 雪
-  400: '雪', 401: '小雪', 402: '中雪', 403: '大雪', 404: '暴雪',
-  405: '大雪', 406: '中雪', 407: '小雪', 408: '小雪', 409: '中雪',
-  410: '雪', 456: '雨夹雪', 457: '雨夹雪',
-  // 雷
-  500: '雷', 501: '雷', 502: '雷', 503: '雷', 504: '雷',
-  507: '雷', 508: '雷', 509: '雷', 510: '雷', 511: '雷',
-  512: '雷', 513: '雷', 514: '雷', 515: '雷',
-  // 雾霾
-  800: '雾', 801: '雾', 802: '雾', 803: '雾', 804: '雾',
-  805: '雾', 806: '雾', 807: '雾',
-  900: '霾', 901: '霾',
-  // 风
-  200: '风',
-};
-
-function getWeatherIcon(code) {
-  const desc = weatherCodeMap[code] || '晴';
-  return weatherIcons[desc] || '🌤️';
+function getWeatherIcon(text) {
+  const t = text.toLowerCase();
+  if (t.includes('sunny') || t.includes('clear') || t.includes('晴')) return '☀️';
+  if (t.includes('cloud') || t.includes('overcast') || t.includes('阴')) return '☁️';
+  if (t.includes('partly') || t.includes('partly') || t.includes('cloudy') || t.includes('多云')) return '⛅';
+  if (t.includes('rain') || t.includes('drizzle') || t.includes('shower') || t.includes('雨')) return '🌧️';
+  if (t.includes('snow') || t.includes('sleet') || t.includes('雪')) return '❄️';
+  if (t.includes('thunder') || t.includes('storm') || t.includes('雷')) return '⛈️';
+  if (t.includes('fog') || t.includes('mist') || t.includes('雾')) return '🌫️';
+  return '🌤️';
 }
 
-function getWeatherDesc(code) {
-  return weatherCodeMap[code] || '晴';
+// 格式化时间为24小时制
+function formatTime24(date) {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
-// 自动获取城市（通过 IP）
-async function getLocation() {
+// 获取 IP 信息 - 使用后端命令，带错误处理和重试
+async function getIPInfo() {
+  console.log('Fetching IP via backend...');
   try {
-    const response = await fetch('https://ipapi.co/json/');
-    const data = await response.json();
+    const ipInfo = await invoke('get_public_ip');
+    console.log('IP info received:', ipInfo);
+    // 确保返回完整的IP信息，包括城市、国家和时区
     return {
-      city: data.city || '未知',
-      lat: data.latitude,
-      lon: data.longitude,
-      country: data.country_name || ''
+      ip: ipInfo.ip || '--',
+      city: ipInfo.city || '未知',
+      country: ipInfo.country || '--',
+      timezone: ipInfo.timezone || ''
     };
   } catch (error) {
-    console.error('获取位置失败:', error);
-    // 返回默认位置（北京）
+    console.error('获取IP失败:', error);
     return {
-      city: '北京',
-      lat: 39.9042,
-      lon: 116.4074,
-      country: '中国'
+      ip: '--',
+      city: '未知',
+      country: '--',
+      timezone: ''
     };
   }
 }
 
-// 获取天气（使用和风天气免费版）
-// 需要 API key，这里使用公开的测试接口或使用 wttr.in
-async function getWeather() {
+// 获取天气信息 - 使用后端命令，接收时区参数
+async function getWeatherInfo(city, timezone) {
+  console.log('Fetching weather via backend for:', city, 'timezone:', timezone);
   try {
-    // 先获取位置
-    const location = await getLocation();
-
-    // 使用 wttr.in 免费天气 API（无需 key）
-    const response = await fetch(`https://wttr.in/${encodeURIComponent(location.city)}?format=j1`);
-    if (!response.ok) {
-      throw new Error('天气 API 请求失败');
-    }
-    const data = await response.json();
-
-    // 解析 wttr.in 数据
-    const current = data.current_condition[0];
-    const area = data.nearest_area[0];
-
-    const temp = current.temp_C;
-    const desc = current.weatherDesc[0].value;
-    const locationName = area.areaName[0].value;
-
-    // 根据天气描述选择图标
-    let icon = '🌤️';
-    const descLower = desc.toLowerCase();
-    if (descLower.includes('sunny') || descLower.includes('clear')) {
-      icon = '☀️';
-    } else if (descLower.includes('cloudy') || descLower.includes('overcast')) {
-      icon = '☁️';
-    } else if (descLower.includes('partly')) {
-      icon = '⛅';
-    } else if (descLower.includes('rain') || descLower.includes('drizzle') || descLower.includes('shower')) {
-      icon = '🌧️';
-    } else if (descLower.includes('snow') || descLower.includes('sleet')) {
-      icon = '❄️';
-    } else if (descLower.includes('thunder') || descLower.includes('storm')) {
-      icon = '⛈️';
-    } else if (descLower.includes('fog') || descLower.includes('mist')) {
-      icon = '🌫️';
-    }
-
-    return {
-      temp: parseInt(temp),
-      desc: desc,
-      location: locationName,
-      icon: icon
-    };
+    const weather = await invoke('get_weather', { city, timezone });
+    console.log('Weather info received:', weather);
+    return weather;
   } catch (error) {
     console.error('获取天气失败:', error);
     return {
-      temp: '--',
+      temp: '--°C',
       desc: '获取失败',
-      location: '--',
+      location: city,
+      country: '--',
+      local_time: '--:--',
       icon: '❓'
     };
   }
 }
 
-// 更新天气显示
-async function updateWeather() {
+// 更新天气和 IP 显示
+async function updateWeatherAndIP() {
   try {
-    const weather = await getWeather();
+    console.log('=== Starting weather and IP update ===');
 
-    document.getElementById('weatherTemp').textContent = `${weather.temp}°C`;
+    // 获取 IP 信息
+    const ipInfo = await getIPInfo();
+    document.getElementById('ipAddress').textContent = ipInfo.ip;
+
+    console.log('IP Info:', ipInfo);
+
+    // 根据 IP 的城市来获取天气
+    // ipInfo.city 应该是从IP API返回的真实城市名（支持全球城市）
+    let weatherCity = ipInfo.city;
+    let isDefaultCity = false;
+
+    if (ipInfo.city === '本地' || ipInfo.city === '未知' || !ipInfo.city || ipInfo.city === 'Unknown') {
+      // 根据国家选择默认城市
+      if (ipInfo.country === 'China' || ipInfo.country === '中国') {
+        weatherCity = 'Beijing';
+      } else {
+        // 国外默认使用纽约
+        weatherCity = 'New York';
+      }
+      isDefaultCity = true;
+    }
+
+    console.log('Fetching weather for city:', weatherCity, 'country:', ipInfo.country, 'isDefault:', isDefaultCity, 'timezone:', ipInfo.timezone);
+    const weather = await getWeatherInfo(weatherCity, ipInfo.timezone);
+
+    // 更新 UI
+    document.getElementById('weatherTemp').textContent = weather.temp;
     document.getElementById('weatherDesc').textContent = weather.desc;
-    document.getElementById('weatherLocation').textContent = weather.location;
+
+    // 显示城市和国家
+    let locationText = weather.location;
+    if (isDefaultCity) {
+      // 默认城市显示 (默认)
+      locationText = weather.location + ' (默认)';
+    } else if (ipInfo.country && ipInfo.country !== '--' && ipInfo.country !== 'China' && ipInfo.country !== '中国') {
+      locationText = weather.location + ', ' + ipInfo.country;
+    } else if (ipInfo.country === 'China' || ipInfo.country === '中国') {
+      locationText = weather.location + ' (中国)';
+    }
+    document.getElementById('weatherLocation').textContent = locationText;
+
     document.getElementById('weatherIcon').textContent = weather.icon;
+    document.getElementById('locationTime').textContent = weather.local_time;
+
+    console.log('更新完成:', { ip: ipInfo.ip, city: weatherCity, weather });
   } catch (error) {
-    console.error('更新天气失败:', error);
+    console.error('更新天气/IP失败:', error);
+    document.getElementById('weatherDesc').textContent = '网络错误';
   }
 }
 
@@ -179,26 +162,66 @@ async function updateStats() {
       statusEl.classList.add('error');
     }
 
-    // 更新时间
+    // 更新时间 - 24小时制
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+    const timeStr = formatTime24(now);
     document.getElementById('updateTime').textContent = timeStr;
   } catch (error) {
     console.error('Failed to get network stats:', error);
   }
 }
 
+// 检测网络状态变化
+let wasOnline = navigator.onLine;
+let ipRefreshTimer = null;
+
+function checkNetworkChange() {
+  const isOnline = navigator.onLine;
+
+  if (!wasOnline && isOnline) {
+    console.log('网络已连接，刷新IP和天气...');
+    // 网络从离线变为在线，立即刷新
+    updateWeatherAndIP();
+  } else if (isOnline && ipRefreshTimer) {
+    // 清除之前的定时器
+    clearTimeout(ipRefreshTimer);
+    // 设置新的定时器，5秒后刷新（防止频繁刷新）
+    ipRefreshTimer = setTimeout(() => {
+      updateWeatherAndIP();
+    }, 5000);
+  }
+
+  wasOnline = isOnline;
+}
+
 // 初始化
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+  console.log('=== DOMContentLoaded, initializing app ===');
+
+  // 测试 Tauri 命令系统
+  try {
+    const testResult = await invoke('test_command');
+    console.log('Test command result:', testResult);
+  } catch (e) {
+    console.error('Test command failed:', e);
+  }
+
   // 初始更新
   updateStats();
-  updateWeather();
+  updateWeatherAndIP();
 
-  // 设置定时更新（每 5 秒更新一次，减少 PowerShell 调用）
-  setInterval(updateStats, 5000);
+  // 等待一下让内容渲染完成，然后调整窗口高度
+  setTimeout(adjustWindowHeight, 500);
 
-  // 天气每 10 分钟更新一次
-  setInterval(updateWeather, 10 * 60 * 1000);
+  // 网络速度：每 1 秒更新一次
+  setInterval(updateStats, 1000);
+
+  // 天气和 IP 每 10 分钟更新一次
+  setInterval(updateWeatherAndIP, 10 * 60 * 1000);
+
+  // 监听网络状态变化
+  window.addEventListener('online', checkNetworkChange);
+  window.addEventListener('offline', checkNetworkChange);
 
   // 关闭按钮
   document.getElementById('closeBtn').addEventListener('click', () => {
@@ -214,4 +237,11 @@ window.addEventListener("DOMContentLoaded", () => {
     const opacity = value / 100;
     widget.style.background = `linear-gradient(135deg, rgba(30, 30, 50, ${opacity}) 0%, rgba(20, 20, 35, ${opacity}) 100%)`;
   });
+
+  // 窗口大小变化时重新调整
+  window.addEventListener('resize', () => {
+    adjustWindowHeight();
+  });
+
+  console.log('=== App initialization complete ===');
 });

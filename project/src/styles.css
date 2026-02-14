@@ -180,12 +180,14 @@ body {
 }
 
 .weather-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.03);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 70px;
 }
 
 .weather-main {
@@ -208,6 +210,7 @@ body {
 .weather-details {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-end;
   gap: 2px;
 }
@@ -220,4 +223,32 @@ body {
 .weather-location {
   color: #666;
   font-size: 10px;
+}
+
+.weather-time {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #4ecdc4;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Consolas', 'Monaco', monospace;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+  white-space: nowrap;
+}
+
+.ip-item {
+  padding: 6px 12px;
+  background: rgba(100, 150, 255, 0.1);
+  border-radius: 8px;
+}
+
+.ip-item .stat-label {
+  color: #89abdd;
+}
+
+.ip-item .stat-value {
+  color: #a0c4ff;
+  font-size: 12px;
 }

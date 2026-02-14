@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>IP API Test</h1>
+    <pre id="ip-result">Loading...</pre>
+    <h1>Weather API Test</h1>
+    <pre id="weather-result">Loading...</pre>
+
+    <script>
+        // Test IP API
+        async function testIP() {
+            const apis = [
+                'https://api.ipify.org?format=json',
+                'https://ip.sb/api/ip',
+                'https://ifconfig.me/ip',
+            ];
+
+            for (const api of apis) {
+                try {
+                    console.log('Trying:', api);
+                    const response = await fetch(api, { mode: 'cors' });
+                    if (response.ok) {
+                        const text = await response.text();
+                        const ip = text.trim().match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)?.[0] ||
+                                   JSON.parse(text)?.ip ||
+                                   text.trim();
+                        document.getElementById('ip-result').textContent = `Success: ${api}\nIP: ${ip}`;
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Failed:', api, e);
+                }
+            }
+            document.getElementById('ip-result').textContent = 'All APIs failed';
+        }
+
+        // Test Weather API
+        async function testWeather() {
+            try {
+                console.log('Testing wttr.in for Shanghai...');
+                const response = await fetch('https://wttr.in/Shanghai?format=j1&lang=zh');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('weather-result').textContent = JSON.stringify(data, null, 2);
+                } else {
+                    document.getElementById('weather-result').textContent = `Failed: ${response.status}`;
+                }
+            } catch (e) {
+                document.getElementById('weather-result').textContent = `Error: ${e.message}`;
+            }
+        }
+
+        testIP();
+        testWeather();
+    </script>
+</body>
+</html>
